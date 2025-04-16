@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Local LLM Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2em; max-width: 800px; margin: auto; }
+    textarea, input, button { width: 100%; margin-top: 1em; padding: 0.5em; font-size: 1em; }
+    #responseBox { white-space: pre-wrap; background: #f4f4f4; padding: 1em; border-radius: 5px; margin-top: 1em; }
+  </style>
+</head>
+<body>
+
+  <h1>Test Your Local AI</h1>
+
+  <label for="promptInput">Prompt:</label>
+  <textarea id="promptInput" rows="5" placeholder="Type your prompt here..."></textarea>
+
+  <button onclick="sendPrompt()">Send</button>
+
+  <h2>Response:</h2>
+  <div id="responseBox">Waiting for input...</div>
+
+  <script>
+    async function sendPrompt() {
+      const prompt = document.getElementById("promptInput").value;
+      const responseBox = document.getElementById("responseBox");
+
+      responseBox.textContent = "Thinking...";
+
+      try {
+        const res = await fetch("https://db66-177-92-77-170.ngrok-free.app/prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt })
+        });
+
+        if (!res.ok) throw new Error("API error: " + res.status);
+
+        const data = await res.json();
+        responseBox.textContent = data.output || "[No response]";
+      } catch (err) {
+        responseBox.textContent = "Error: " + err.message;
+      }
+    }
+  </script>
+
+</body>
+</html>
