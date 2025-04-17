@@ -26,25 +26,31 @@
     async function sendPrompt() {
       const prompt = document.getElementById("promptInput").value;
       const responseBox = document.getElementById("responseBox");
-
+  
       responseBox.textContent = "Thinking...";
-
+  
       try {
-        const res = await fetch(" https://8246-177-92-77-170.ngrok-free.app/prompt", {
+        const res = await fetch("https://8246-177-92-77-170.ngrok-free.app/prompt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt })
         });
-
+  
         if (!res.ok) throw new Error("API error: " + res.status);
-
+  
         const data = await res.json();
-        responseBox.textContent = data.output || "[No response]";
+  
+        responseBox.innerHTML = `
+          <strong>Agent:</strong> ${data.agent?.name || "Unknown"}<br>
+          <strong>Role:</strong> ${data.agent?.role || "N/A"}<br><br>
+          <strong>Response:</strong><br>${data.output || "[No response]"}
+        `;
       } catch (err) {
         responseBox.textContent = "Error: " + err.message;
       }
     }
   </script>
+  
 
 </body>
 </html>
