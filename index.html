@@ -7,78 +7,147 @@
   <style>
     body { font-family: Arial, sans-serif; padding: 2em; max-width: 800px; margin: auto; }
     textarea, input, button { width: 100%; margin-top: 1em; padding: 0.5em; font-size: 1em; }
-    #responseBox { white-space: pre-wrap; background: #f4f4f4; padding: 1em; border-radius: 5px; margin-top: 1em; }
+    #responseBox, .translation-task { white-space: pre-wrap; background: #f4f4f4; padding: 1em; border-radius: 5px; margin-top: 1em; }
+    .tabs { display: flex; gap: 1em; margin-bottom: 1em; }
+    .tabs button { flex: 1; padding: 1em; cursor: pointer; }
+    .hidden { display: none; }
+    .feedback { background: #e7ffe7; padding: 0.5em; margin-top: 0.5em; border-radius: 4px; }
   </style>
 </head>
 <body>
 
   <h1>Test Your Local AI</h1>
 
-  <label for="promptInput">Prompt:</label>
-  <textarea id="promptInput" rows="5" placeholder="Type your prompt here..."></textarea>
+  <div class="tabs">
+    <button onclick="switchTab('general')">General</button>
+    <button onclick="switchTab('translator')">Translator</button>
+  </div>
 
-  <button onclick="sendPrompt()">Send</button>
+  <!-- GENERAL PROMPT TAB -->
+  <div id="generalTab">
+    <label for="promptInput">Prompt:</label>
+    <textarea id="promptInput" rows="5" placeholder="Type your prompt here..."></textarea>
+    <button onclick="sendPrompt()">Send</button>
 
-  <h2>Response:</h2>
-  <div id="responseBox">Waiting for input...</div>
+    <h2>Response:</h2>
+    <div id="responseBox">Waiting for input...</div>
+  </div>
+
+  <!-- TRANSLATOR TAB -->
+  <div id="translatorTab" class="hidden">
+    <button onclick="loadTranslationTasks()">🔄 Load New Translations</button>
+    <div id="translatorContainer"></div>
+  </div>
 
   <script>
+    const API_URL = "https://8246-177-92-77-170.ngrok-free.app";
+
+    // Switch between tabs
+    function switchTab(tab) {
+      document.getElementById("generalTab").classList.toggle("hidden", tab !== 'general');
+      document.getElementById("translatorTab").classList.toggle("hidden", tab !== 'translator');
+    }
+
+    // Send a general prompt to the backend
     async function sendPrompt() {
       const prompt = document.getElementById("promptInput").value;
       const responseBox = document.getElementById("responseBox");
-  
+
       responseBox.textContent = "Thinking...";
-  
+
       try {
-        const res = await fetch("https://8246-177-92-77-170.ngrok-free.app/prompt", {
+        const res = await fetch(`${API_URL}/prompt`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ prompt, userId: "user123" })
         });
-  
-        if (!res.ok) throw new Error("API error: " + res.status);
-  
+
         const data = await res.json();
         const agent = data.agent?.name || "Unknown";
         const output = data.output || "[No response]";
-  
+
         let formatted = "";
-  
+
         try {
           const parsed = JSON.parse(output);
-          if (parsed.type === "translation-task") {
+          if (parsed.type === "translation-feedback") {
             formatted = `
               <strong>Agent:</strong> ${agent}<br><br>
-              <strong>Translation Task:</strong><br>
-              <strong>Korean:</strong> ${parsed.korean}<br>
-              <strong>English:</strong> ${parsed.english}
-            `;
-          } else if (parsed.type === "translation-feedback") {
-            formatted = `
-              <strong>Agent:</strong> ${agent}<br><br>
-              <strong>Translation Feedback:</strong><br>
-              <strong>Original:</strong> ${parsed.original}<br>
-              <strong>Your Translation:</strong> ${parsed.userTranslation}<br>
-              <strong>Correct Translation:</strong> ${parsed.correctTranslation}<br>
-              <strong>Feedback:</strong> ${parsed.feedback}<br>
-              <strong>Score:</strong> ${parsed.score}/10
+              <strong>Feedback:</strong><br>
+              Your answer: ${parsed.userTranslation}<br>
+              Correct: ${parsed.correctTranslation}<br>
+              Notes: ${parsed.feedback}<br>
+              Score: ${parsed.score}/10
             `;
           } else {
             formatted = `<strong>Agent:</strong> ${agent}<br><br><strong>Response:</strong><br>${output}`;
           }
-        } catch (err) {
-          // fallback if not JSON
+        } catch {
           formatted = `<strong>Agent:</strong> ${agent}<br><br><strong>Response:</strong><br>${output}`;
         }
-  
+
         responseBox.innerHTML = formatted;
       } catch (err) {
         responseBox.textContent = "Error: " + err.message;
       }
     }
+
+    // Load translation tasks
+    async function loadTranslationTasks() {
+      const container = document.getElementById("translatorContainer");
+      container.innerHTML = "Loading translations...";
+
+      const res = await fetch(`${API_URL}/prompt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "translation-batch", userId: "user123" })
+      });
+
+      const data = await res.json();
+      const tasks = JSON.parse(data.output).tasks;
+
+      container.innerHTML = "";
+
+      tasks.forEach((task, index) => {
+        const div = document.createElement("div");
+        div.className = "translation-task";
+        div.innerHTML = `
+          <p><strong>Translate:</strong> ${task.sentence}</p>
+          <p><em>Hint: ${task.hint}</em></p>
+          <input type="text" id="userInput-${index}" placeholder="Your translation" />
+          <button onclick="evaluateTranslation('${task.id}', '${task.sentence}', ${index})">Submit</button>
+          <div class="feedback" id="feedback-${index}"></div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Evaluate user translation
+    async function evaluateTranslation(taskId, originalSentence, index) {
+      const userInput = document.getElementById(`userInput-${index}`).value;
+      const feedbackBox = document.getElementById(`feedback-${index}`);
+      feedbackBox.textContent = "Evaluating...";
+
+      const prompt = `Evaluate this user's translation: "${userInput}" for the Korean sentence: "${originalSentence}".`;
+
+      const res = await fetch(`${API_URL}/prompt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, userId: "user123" })
+      });
+
+      const data = await res.json();
+      const parsed = JSON.parse(data.output);
+
+      feedbackBox.innerHTML = `
+        ✅ <strong>${parsed.correct ? "Correct!" : "Not quite."}</strong><br>
+        Your answer: ${parsed.userTranslation}<br>
+        Correct: ${parsed.correctTranslation}<br>
+        Notes: ${parsed.feedback}<br>
+        Score: ${parsed.score}/10
+      `;
+    }
   </script>
-  
-  
 
 </body>
 </html>
