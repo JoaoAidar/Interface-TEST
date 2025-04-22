@@ -39,17 +39,45 @@
         if (!res.ok) throw new Error("API error: " + res.status);
   
         const data = await res.json();
+        const agent = data.agent?.name || "Unknown";
+        const output = data.output || "[No response]";
   
-        responseBox.innerHTML = `
-          <strong>Agent:</strong> ${data.agent?.name|| "Unknown"}<br>
-          <strong>Role:</strong> ${data.agent?.role || "N/A"}<br><br>
-          <strong>Response:</strong><br>${data.output || "[No response]"}
-        `;
+        let formatted = "";
+  
+        try {
+          const parsed = JSON.parse(output);
+          if (parsed.type === "translation-task") {
+            formatted = `
+              <strong>Agent:</strong> ${agent}<br><br>
+              <strong>Translation Task:</strong><br>
+              <strong>Korean:</strong> ${parsed.korean}<br>
+              <strong>English:</strong> ${parsed.english}
+            `;
+          } else if (parsed.type === "translation-feedback") {
+            formatted = `
+              <strong>Agent:</strong> ${agent}<br><br>
+              <strong>Translation Feedback:</strong><br>
+              <strong>Original:</strong> ${parsed.original}<br>
+              <strong>Your Translation:</strong> ${parsed.userTranslation}<br>
+              <strong>Correct Translation:</strong> ${parsed.correctTranslation}<br>
+              <strong>Feedback:</strong> ${parsed.feedback}<br>
+              <strong>Score:</strong> ${parsed.score}/10
+            `;
+          } else {
+            formatted = `<strong>Agent:</strong> ${agent}<br><br><strong>Response:</strong><br>${output}`;
+          }
+        } catch (err) {
+          // fallback if not JSON
+          formatted = `<strong>Agent:</strong> ${agent}<br><br><strong>Response:</strong><br>${output}`;
+        }
+  
+        responseBox.innerHTML = formatted;
       } catch (err) {
         responseBox.textContent = "Error: " + err.message;
       }
     }
   </script>
+  
   
 
 </body>
