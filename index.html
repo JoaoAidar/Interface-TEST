@@ -41,7 +41,7 @@
         const data = await res.json();
   
         responseBox.innerHTML = `
-          <strong>Agent:</strong> ${data.agent|| "Unknown"}<br>
+          <strong>Agent:</strong> ${data.agent?,name|| "Unknown"}<br>
           <strong>Role:</strong> ${data.agent?.role || "N/A"}<br><br>
           <strong>Response:</strong><br>${data.output || "[No response]"}
         `;
