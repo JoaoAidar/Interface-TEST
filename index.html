@@ -95,50 +95,56 @@
       document.getElementById("translatorTab").classList.toggle("hidden", tab !== 'translator');
     }
 
-    // Function to send the user's prompt to the backend and handle the response
     async function sendPrompt() {
-      const prompt = document.getElementById("promptInput").value;
-      const responseBox = document.getElementById("responseBox");
+  const prompt = document.getElementById("promptInput").value;
+  const responseBox = document.getElementById("responseBox");
 
-      responseBox.textContent = "Thinking...";
+  responseBox.textContent = "Thinking...";
 
-      try {
-        const res = await fetch(`${API_URL}/prompt`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt })
-        });
+  try {
+    const res = await fetch(`${API_URL}/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
 
-        if (!res.ok) throw new Error("API error: " + res.status);
+    if (!res.ok) throw new Error("API error: " + res.status);
 
-        const data = await res.json(); // Parse the response as JSON
+    const data = await res.json(); // Parse the response as JSON
 
-        let formatted = "";
+    let formatted = "";
 
-        // Check if 'output' is a string or an object and format accordingly
-        if (data.output && typeof data.output === 'string') {
-          formatted = `<strong>Agent:</strong> ${data.agent || "Unknown"}<br><br><strong>Response:</strong><br>${data.output}`;
-        } else if (data.output && typeof data.output === 'object') {
-          const parsed = data.output;
-          if (parsed.type === "translation-task") {
-            formatted = `
-              <strong>Agent:</strong> ${data.agent || "Unknown"}<br><br>
-              <strong>Translation Task:</strong><br>
-              <strong>English Sentences:</strong><br>${parsed.content}
-            `;
-          } else {
-            formatted = `<strong>Agent:</strong> ${data.agent || "Unknown"}<br><br><strong>Response:</strong><br>${parsed.content}`;
-          }
-        } else {
-          formatted = `<strong>Agent:</strong> ${data.agent || "Unknown"}<br><br><strong>Response:</strong><br>${data.output || "No response"}`;
-        }
-
-        responseBox.innerHTML = formatted;
-
-      } catch (err) {
-        responseBox.textContent = "Error: " + err.message; // Handle error
-      }
+    // Check if 'output' contains an unwanted colon and clean it up
+    let cleanedOutput = data.output.trim();
+    if (cleanedOutput.startsWith(":")) {
+      cleanedOutput = cleanedOutput.slice(1).trim(); // Remove the leading colon
     }
+
+    // Check if the cleaned 'output' is a string or an object and format accordingly
+    if (cleanedOutput && typeof cleanedOutput === 'string') {
+      formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${cleanedOutput}`;
+    } else if (cleanedOutput && typeof cleanedOutput === 'object') {
+      const parsed = cleanedOutput;
+      if (parsed.type === "translation-task") {
+        formatted = `
+          <strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br>
+          <strong>Translation Task:</strong><br>
+          <strong>English Sentences:</strong><br>${parsed.content}
+        `;
+      } else {
+        formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${parsed.content}`;
+      }
+    } else {
+      formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${cleanedOutput || "No response"}`;
+    }
+
+    responseBox.innerHTML = formatted;
+
+  } catch (err) {
+    responseBox.textContent = "Error: " + err.message; // Handle error
+  }
+}
+
 
     // Function to load translation tasks from the backend
     async function loadTranslationTasks() {
