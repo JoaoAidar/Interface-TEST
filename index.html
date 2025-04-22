@@ -111,6 +111,7 @@
     if (!res.ok) throw new Error("API error: " + res.status);
 
     const data = await res.json(); // Parse the response as JSON
+    console.log("Raw API Response:", data);  // Log the raw response for debugging
 
     let formatted = "";
 
@@ -120,22 +121,23 @@
       cleanedOutput = cleanedOutput.slice(1).trim(); // Remove the leading colon
     }
 
-    // Check if the cleaned 'output' is a string or an object and format accordingly
-    if (cleanedOutput && typeof cleanedOutput === 'string') {
-      formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${cleanedOutput}`;
-    } else if (cleanedOutput && typeof cleanedOutput === 'object') {
-      const parsed = cleanedOutput;
-      if (parsed.type === "translation-task") {
+    // Try parsing cleaned output as JSON (if it's supposed to be JSON)
+    try {
+      const parsedOutput = JSON.parse(cleanedOutput);
+      
+      // Assuming the parsed output is an object with a 'type' key
+      if (parsedOutput.type === "translation-task") {
         formatted = `
           <strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br>
           <strong>Translation Task:</strong><br>
-          <strong>English Sentences:</strong><br>${parsed.content}
+          <strong>English Sentences:</strong><br>${parsedOutput.content}
         `;
       } else {
-        formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${parsed.content}`;
+        formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${parsedOutput.content}`;
       }
-    } else {
-      formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${cleanedOutput || "No response"}`;
+    } catch (err) {
+      // If parsing fails, treat the output as plain text
+      formatted = `<strong>Agent:</strong> ${data.agent.name || "Unknown"}<br><br><strong>Response:</strong><br>${cleanedOutput}`;
     }
 
     responseBox.innerHTML = formatted;
@@ -144,6 +146,7 @@
     responseBox.textContent = "Error: " + err.message; // Handle error
   }
 }
+
 
 
     // Function to load translation tasks from the backend
